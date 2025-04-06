@@ -1,128 +1,195 @@
 # System Patterns: CampusVibe
 
 ## High-Level Architecture
-CampusVibe follows a client-server architecture where the client is a web application (built with React) and the backend services are provided by Firebase (Backend-as-a-Service).
+```mermaid
+graph TD
+    Client[Client App] --> Auth[Authentication Layer]
+    Auth --> Guards[Route Guards]
+    Guards --> Features[Feature Components]
+    Features --> ErrorBoundary[Error Boundary]
+    Features --> State[State Management]
+    State --> Firebase[Firebase Services]
+    
+    subgraph Security
+        Auth
+        Guards
+        Rules[Security Rules]
+    end
+    
+    subgraph Error Handling
+        ErrorBoundary
+        Toast[Toast System]
+        Offline[Offline Detection]
+    end
+    
+    subgraph State Management
+        Context[Context Providers]
+        Hooks[Custom Hooks]
+        Cache[Local Cache]
+    end
+```
 
+## Security Patterns
+### Authentication Flow
 ```mermaid
 graph LR
-    User[User Browser] -- HTTPS --> ReactApp[React Web App];
-    ReactApp -- Firebase SDK --> FirebaseAuth[Firebase Authentication];
-    ReactApp -- Firebase SDK --> Firestore[Firestore Database];
-    ReactApp -- Firebase SDK --> FirebaseFunc[(Optional) Cloud Functions];
+    Login[Login Request] --> Validate[Rate Limiting]
+    Validate --> Auth[Firebase Auth]
+    Auth --> Session[Session Management]
+    Session --> Guard[Route Guard]
+```
 
-    subgraph Firebase Backend
-        FirebaseAuth
-        Firestore
-        FirebaseFunc
+### Data Access Rules
+```mermaid
+graph TD
+    Request[Data Request] --> Auth[Auth Check]
+    Auth --> Verify[Verification Check]
+    Verify --> RateLimit[Rate Limiting]
+    RateLimit --> Validate[Data Validation]
+    Validate --> Access[Access Grant/Deny]
+```
+
+## Error Handling Pattern
+```mermaid
+graph TD
+    Error[Error Occurs] --> Boundary[Error Boundary]
+    Boundary --> Type[Error Type Check]
+    Type --> UI[User Feedback]
+    UI --> Recovery[Recovery Action]
+    
+    subgraph User Feedback
+        Toast[Toast Notification]
+        ErrorPage[Error Page]
+        Indicator[Status Indicator]
     end
 ```
 
 ## Component Architecture
+### Core Components
+- **ErrorBoundary**: Global error catching and recovery
+- **RouteGuard**: Authentication and route protection
+- **ToastProvider**: User notifications system
+- **OfflineIndicator**: Network status management
+
+### Security Components
+- Rate limiting implementation
+- Session management
+- Data validation
+- Access control
+
+### State Management
+- Context-based state
+- Custom hooks for shared logic
+- Local cache management
+- Offline state handling
+
+## Security Rules Structure
+### Firestore Rules
+```javascript
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper Functions
+    function isAuthenticated() { ... }
+    function isVerified() { ... }
+    function notRateLimited() { ... }
+    
+    // Data Validation
+    function isValidUserData() { ... }
+    function isValidQuestion() { ... }
+    function isValidAnswer() { ... }
+    
+    // Collection Rules
+    match /users/{userId} { ... }
+    match /questions/{questionId} { ... }
+    match /answers/{answerId} { ... }
+    match /chats/{chatId} { ... }
+  }
+}
+```
+
+## Error Recovery Patterns
+1. **Component Level**
+   - Try-catch blocks
+   - Error boundaries
+   - Fallback UI
+   
+2. **Network Level**
+   - Offline detection
+   - Request retries
+   - Cache management
+   
+3. **User Feedback**
+   - Toast notifications
+   - Error pages
+   - Loading states
+
+## State Management Patterns
+1. **Authentication State**
+   ```typescript
+   interface AuthState {
+     user: User | null;
+     loading: boolean;
+     error: Error | null;
+   }
+   ```
+
+2. **UI State**
+   ```typescript
+   interface UIState {
+     toasts: Toast[];
+     loading: boolean;
+     offline: boolean;
+   }
+   ```
+
+3. **Cache State**
+   ```typescript
+   interface CacheState {
+     data: Record<string, any>;
+     timestamp: number;
+     valid: boolean;
+   }
+   ```
+
+## Navigation Patterns
+1. **Route Protection**
+   - Authentication checks
+   - Role verification
+   - Onboarding status
+   
+2. **Deep Linking**
+   - State preservation
+   - Return path handling
+   - Authentication redirect
+
+## Data Flow Patterns
 ```mermaid
-graph TB
-    App --> AuthContext
-    App --> Pages
-    Pages --> AuthPage
-    Pages --> HomePage
-    Pages --> OnboardingWizard
+graph TD
+    Action[User Action] --> Validate[Validation]
+    Validate --> Cache[Check Cache]
+    Cache --> API[API Request]
+    API --> Store[Store Result]
+    Store --> UI[Update UI]
     
-    OnboardingWizard --> BasicInfoSection
-    OnboardingWizard --> PreferencesSection
-    OnboardingWizard --> PersonalDetailsSection
-    
-    subgraph UI Components
-        Button
-        Form
-        Input
-        Select
-        MultiSelect
-        TextArea
-        Badge
-        Command
-        Dialog
-        Label
-        Popover
-        RadioGroup
+    subgraph Error Handling
+        API --> Error[Error Check]
+        Error --> Retry[Retry Logic]
+        Error --> Notify[User Notification]
     end
 ```
 
-## Key Technical Decisions
-- **Frontend Framework:** React (using Vite for build tooling)
-- **Backend:** Firebase BaaS (Authentication, Firestore, Hosting)
-- **Database:** Firestore (NoSQL document database)
-- **Authentication:** Firebase Authentication with Google OAuth
-- **Real-time Communication:** Firestore's real-time listeners (for chat feature)
-- **Form Management:** react-hook-form with Zod validation
-- **UI Components:** Shadcn UI with Tailwind CSS
-- **Animations:** Framer Motion for transitions
+## Performance Patterns
+1. **Loading Optimization**
+   - Route-based code splitting
+   - Lazy loading
+   - Preloading critical assets
 
-## Component Design Patterns
-### Form Management
-- Multi-step wizard pattern for complex forms
-- Progressive validation using Zod schemas
-- Form state management via react-hook-form
-- Reusable form sections for maintainability
+2. **State Management**
+   - Selective re-rendering
+   - Memoization
+   - State normalization
 
-### UI/UX Patterns
-- Consistent gradient styling across CTAs
-- Animated transitions between states
-- Progress indicators for multi-step processes
-- Toast notifications for user feedback
-- Responsive design using Tailwind CSS
-
-### Data Flow Patterns
-```mermaid
-graph TD
-    User[User Input] --> FormValidation[Form Validation]
-    FormValidation --> LocalState[Local State]
-    LocalState --> FirestoreWrite[Firestore Write]
-    FirestoreWrite --> UserFeedback[User Feedback]
-```
-
-## Database Schema (Firestore)
-```mermaid
-graph LR
-    Users --> Questions
-    Users --> Answers
-    Users --> Chats
-    Chats --> Messages
-```
-
-### Collections Structure
-- **users/**
-  - User profile data
-  - Authentication info
-  - Preferences
-  - Personal details
-  
-- **questions/** *(to be implemented)*
-  - Question text
-  - Author reference
-  - Timestamp
-  - Tags
-  
-- **answers/** *(to be implemented)*
-  - Answer text
-  - Question reference
-  - Author reference
-  - Timestamp
-  
-- **chats/** *(to be implemented)*
-  - Participant references
-  - Status (active/expired)
-  - Created timestamp
-  - messages/ subcollection
-
-## Critical Implementation Paths
-- Secure Firebase service interaction
-- Form validation and data integrity
-- Real-time chat feature *(upcoming)*
-- Daily question limit logic *(upcoming)*
-- Compatibility sorting algorithm *(upcoming)*
-
-## Error Handling Patterns
-- Form-level validation feedback
-- API error handling with user-friendly messages
-- Loading states for async operations
-- Fallback UI components
-- Error boundaries for component failures
+3. **Data Management**
+   - Caching strategies
+   - Offline persistence
+   - Batch operations

@@ -4,7 +4,7 @@
 ### Core Framework
 - **Framework:** React v19.0.0
 - **Build Tool:** Vite v6.2.0
-- **Language:** JavaScript (ES Modules via `"type": "module"`)
+- **Language:** JavaScript (ES Modules)
 - **React Plugin:** @vitejs/plugin-react v4.3.4
 
 ### UI Technologies
@@ -13,147 +13,213 @@
 - **Animation Library:** Framer Motion
 - **Icons:** Lucide React
 
-### Form Management
-- **Form Library:** react-hook-form
-- **Validation:** Zod
-- **Form-Validation Bridge:** @hookform/resolvers/zod
+### Required Additions
+1. **Error Handling & Notifications**
+   - react-error-boundary
+   - react-hot-toast/sonner
+   - custom error hooks
+
+2. **State Management & Caching**
+   - zustand/jotai (for global state)
+   - react-query/swr (for data fetching/caching)
+   - localStorage utilities
+
+3. **Form & Validation**
+   - zod (schema validation)
+   - react-hook-form
+   - custom form hooks
+
+4. **Route Management**
+   - react-router-dom
+   - route protection HOCs
+   - navigation guards
 
 ## Backend Services (Firebase)
 ### Active Services
-- Firebase Authentication (Google OAuth provider)
-- Firestore (NoSQL Database)
-- Firebase Hosting (Deployment)
+- Firebase Authentication (Google OAuth)
+- Firestore Database
+- Firebase Hosting
 
-### Planned Services
-- (Optional) Firebase Cloud Functions
-  - Chat expiration
-  - Compatibility calculations
-  - Background tasks
-
-## Development Tools
-### Code Quality
-- **Linter:** ESLint v9.21.0
-  - Plugins:
-    - @eslint/js
-    - eslint-plugin-react-hooks
-    - eslint-plugin-react-refresh
-- **Globals:** globals v15.15.0
-- *(Formatter to be added: Prettier consideration)*
-
-### Dependencies
-```json
-{
-  "dependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "firebase": "latest",
-    "react-hook-form": "latest",
-    "framer-motion": "latest",
-    "@hookform/resolvers": "latest",
-    "zod": "latest",
-    "lucide-react": "latest"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.4",
-    "vite": "^6.2.0",
-    "eslint": "^9.21.0",
-    "globals": "^15.15.0",
-    "tailwindcss": "latest",
-    "@types/node": "latest"
-  }
-}
-```
-
-## Development Workflow
-1. **Local Development:**
-   ```bash
-   npm run dev    # Start Vite dev server
-   npm run lint   # Run ESLint
-   npm run build  # Production build
+### Required Security Enhancements
+1. **Authentication**
+   ```typescript
+   interface AuthConfig {
+     persistence: 'LOCAL' | 'SESSION' | 'NONE';
+     sessionTimeout: number;
+     maxAttempts: number;
+     requireEmailVerification: boolean;
+     passwordRequirements: {
+       minLength: number;
+       requireNumber: boolean;
+       requireSpecialChar: boolean;
+     };
+   }
    ```
 
-2. **Firebase Development:**
-   - Local testing with Firebase Emulator Suite
-   - Direct interaction with Firebase services via SDK
-
-3. **Deployment:**
-   ```bash
-   npm run build          # Build the app
-   firebase deploy        # Deploy to Firebase Hosting
+2. **Firestore Rules**
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       // User data access
+       match /users/{userId} {
+         allow read: if request.auth != null;
+         allow write: if request.auth.uid == userId;
+       }
+       
+       // Questions access
+       match /questions/{questionId} {
+         allow read: if request.auth != null;
+         allow create: if canCreateQuestion();
+         allow update, delete: if resource.data.authorId == request.auth.uid;
+       }
+       
+       // Rate limiting function
+       function canCreateQuestion() {
+         let recentQuestions = getRecentQuestions();
+         return recentQuestions.size() <= 1;
+       }
+     }
+   }
    ```
 
-## Firebase Configuration
-- Project configuration in `src/firebaseConfig.js`
-- Authentication set up for Google OAuth
-- Firestore rules to be implemented
-- Hosting configuration in `firebase.json`
-
-## Data Models
-### User Profile
+## Required Infrastructure
+### Error Handling System
 ```typescript
-interface UserProfile {
-  uid: string;
-  email: string;
-  name: string;
-  gender: "male" | "female" | "other";
-  interestedIn: "male" | "female" | "everyone";
-  createdAt: Timestamp;
-  needsOnboarding: boolean;
-  profileDetails: {
-    relationshipGoals: "casual" | "long-term" | "friendship";
-    interests: string[];
-    bio: string;
-    height: number;
-    languages: string[];
-    pets: "yes" | "no";
-    favorites: {
-      songs: string;
-      movies: string;
-    };
+interface ErrorConfig {
+  retry: {
+    count: number;
+    delay: number;
+    backoff: boolean;
+  };
+  offline: {
+    detection: boolean;
+    syncQueue: boolean;
+  };
+  notification: {
+    duration: number;
+    position: string;
   };
 }
 ```
 
-### Question (To Be Implemented)
+### State Management
 ```typescript
-interface Question {
-  id: string;
-  authorId: string;
-  text: string;
-  tags: string[];
-  createdAt: Timestamp;
-  isActive: boolean;
+interface AppState {
+  auth: {
+    user: User | null;
+    loading: boolean;
+    error: Error | null;
+  };
+  ui: {
+    toast: ToastState[];
+    modal: ModalState;
+    loading: boolean;
+  };
+  cache: {
+    questions: Question[];
+    ttl: number;
+    lastUpdated: number;
+  };
 }
 ```
 
-### Answer (To Be Implemented)
+### Route Protection
 ```typescript
-interface Answer {
-  id: string;
-  questionId: string;
-  authorId: string;
-  text: string;
-  createdAt: Timestamp;
+interface RouteConfig {
+  path: string;
+  component: React.ComponentType;
+  guards: RouteGuard[];
+  meta: {
+    requiresAuth: boolean;
+    requiresProfile: boolean;
+    roles: string[];
+  };
 }
 ```
 
-## Environment Setup Required
-1. Firebase Project
-   - Enable Authentication (Google provider)
-   - Set up Firestore database
-   - Configure Firebase Hosting
+## Development Workflow Enhancements
+1. **Type Safety**
+   - Add TypeScript
+   - Strict mode enabled
+   - ESLint TypeScript rules
 
-2. Local Environment
-   - Node.js & npm
-   - Firebase CLI
-   - VSCode Extensions:
-     - ESLint
-     - Tailwind CSS IntelliSense
-     - Firebase (optional)
+2. **Testing Infrastructure**
+   - Vitest for unit testing
+   - Testing Library for component tests
+   - Cypress for E2E testing
 
-## Performance Considerations
-- Lazy loading for route components
-- Optimistic UI updates
-- Firestore query optimization
-- Animation performance monitoring
-- Bundle size optimization
+3. **Performance Monitoring**
+   - Firebase Performance
+   - Error tracking (Sentry)
+   - Analytics implementation
+
+4. **Build & Deploy**
+   ```bash
+   # Development
+   npm run dev        # Start dev server
+   npm run test       # Run tests
+   npm run lint       # Lint code
+
+   # Production
+   npm run build      # Build app
+   npm run preview    # Preview build
+   firebase deploy    # Deploy to Firebase
+   ```
+
+## Security Requirements
+### Authentication
+- Implement session persistence
+- Add rate limiting
+- Enable email verification
+- Add password requirements
+- Implement session timeout
+
+### Data Protection
+- Implement Firestore rules
+- Add data validation
+- Enable offline persistence
+- Implement batch operations
+- Add optimistic updates
+
+### Error Recovery
+- Add retry mechanisms
+- Implement offline mode
+- Add error boundaries
+- Enable state recovery
+
+## Performance Requirements
+### Loading Optimization
+- Implement lazy loading
+- Add route-based code splitting
+- Enable Firestore caching
+- Implement infinite scrolling
+
+### State Management
+- Add global error handling
+- Implement toast system
+- Add loading indicators
+- Enable state persistence
+
+### Caching Strategy
+- Implement data caching
+- Add offline support
+- Enable optimistic updates
+- Implement pagination
+
+## Environment Variables
+```bash
+# Firebase Config
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+VITE_FIREBASE_MEASUREMENT_ID=
+
+# App Config
+VITE_APP_ENV=development
+VITE_API_URL=
+VITE_SESSION_TIMEOUT=3600
+VITE_ENABLE_ANALYTICS=false

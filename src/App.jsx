@@ -1,39 +1,68 @@
 "use client"
-import { AuthProvider, useAuth } from "./contexts/AuthContext"
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
+import { AnimatePresence } from "framer-motion"
+import { AuthProvider } from "./contexts/AuthContext"
+import { ToastProvider } from "./hooks/use-toast"
+import ErrorBoundary from "./components/ErrorBoundary"
+import RouteGuard from "./components/RouteGuard"
+import OfflineIndicator from "./components/OfflineIndicator"
 import AuthPage from "./pages/AuthPage"
 import OnboardingWizard from "./components/onboarding/OnboardingWizard"
 import HomePage from "./pages/HomePage"
-
-function AppContent() {
-  const { currentUser, userProfile, loading } = useAuth()
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 to-purple-100">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-violet-500"></div>
-      </div>
-    )
-  }
-
-  // Not logged in
-  if (!currentUser) {
-    return <AuthPage />
-  }
-
-  // Logged in but needs onboarding
-  if (!userProfile || userProfile.needsOnboarding) {
-    return <OnboardingWizard user={currentUser} />
-  }
-
-  // Fully authenticated and onboarded
-  return <HomePage />
-}
+import ErrorPage from "./pages/ErrorPage"
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        <AuthProvider>
+          <Router>
+            <OfflineIndicator />
+            <AnimatePresence mode="wait">
+              <Routes>
+                {/* Public routes */}
+                <Route path="/login" element={<AuthPage />} />
+                <Route path="/signup" element={<AuthPage isSignUp={true} />} />
+
+                {/* Protected routes */}
+                <Route
+                  path="/"
+                  element={
+                    <RouteGuard>
+                      <HomePage />
+                    </RouteGuard>
+                  }
+                />
+                <Route
+                  path="/onboarding"
+                  element={
+                    <RouteGuard>
+                      <OnboardingWizard />
+                    </RouteGuard>
+                  }
+                />
+
+                {/* Error routes */}
+                <Route path="/404" element={<ErrorPage statusCode={404} />} />
+                <Route
+                  path="/500"
+                  element={
+                    <ErrorPage
+                      statusCode={500}
+                      title="Server error"
+                      message="Something went wrong on our servers. Please try again later."
+                    />
+                  }
+                />
+
+                {/* Catch all route */}
+                <Route path="*" element={<Navigate to="/404" replace />} />
+              </Routes>
+            </AnimatePresence>
+          </Router>
+        </AuthProvider>
+      </ToastProvider>
+    </ErrorBoundary>
   )
 }
 
