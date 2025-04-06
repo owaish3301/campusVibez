@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect } from "react"
+import { createContext, useContext, useState, useEffect, useRef } from "react"
 import {
   getAuth,
   onAuthStateChanged,
@@ -26,7 +26,8 @@ export function AuthProvider({ children }) {
   const [userProfile, setUserProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [authError, setAuthError] = useState(null)
-  const [sessionTimeout, setSessionTimeout] = useState(null)
+  const timeoutRef = useRef(null) // Use ref instead of state for timeout ID
+  const activityTimeoutRef = useRef(null) // Ref for debouncing activity
   const { toast } = useToast()
   const auth = getAuth()
 
@@ -40,8 +41,13 @@ export function AuthProvider({ children }) {
 
   // Session timeout handling (auto logout after 2 hours of inactivity)
   useEffect(() => {
-    if (currentUser) {
-      const timeoutId = setTimeout(
+    const resetTimeout = () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
+
+      if (currentUser) {
+        timeoutRef.current = setTimeout(
         () => {
           signOut()
           toast({
@@ -50,31 +56,42 @@ export function AuthProvider({ children }) {
             variant: "default",
           })
         },
-        2 * 60 * 60 * 1000,
-      ) // 2 hours
-
-      setSessionTimeout(timeoutId)
-
-      // Reset timeout on user activity
-      const resetTimeout = () => {
-        clearTimeout(sessionTimeout)
-        setSessionTimeout(timeoutId)
-      }
-
-      window.addEventListener("click", resetTimeout)
-      window.addEventListener("keypress", resetTimeout)
-      window.addEventListener("scroll", resetTimeout)
-      window.addEventListener("mousemove", resetTimeout)
-
-      return () => {
-        clearTimeout(timeoutId)
-        window.removeEventListener("click", resetTimeout)
-        window.removeEventListener("keypress", resetTimeout)
-        window.removeEventListener("scroll", resetTimeout)
-        window.removeEventListener("mousemove", resetTimeout)
+          2 * 60 * 60 * 1000,
+        ) // 2 hours
       }
     }
-  }, [currentUser, sessionTimeout, toast])
+
+    // Initial timeout setup
+    resetTimeout()
+
+    // Activity event listeners
+    const activityEvents = ["click", "keypress", "scroll", "mousemove"]
+    
+    const handleActivity = () => {
+      // Debounce activity handling
+      if (activityTimeoutRef.current) {
+        clearTimeout(activityTimeoutRef.current)
+      }
+      activityTimeoutRef.current = setTimeout(resetTimeout, 1000) // Reset after 1 second of inactivity
+    }
+
+    activityEvents.forEach(event => {
+      window.addEventListener(event, handleActivity)
+    })
+
+    // Cleanup
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
+      if (activityTimeoutRef.current) {
+        clearTimeout(activityTimeoutRef.current)
+      }
+      activityEvents.forEach(event => {
+        window.removeEventListener(event, handleActivity)
+      })
+    }
+  }, [currentUser, toast]) // Removed sessionTimeout from dependencies
 
   // Auth state listener
   useEffect(() => {
@@ -117,6 +134,9 @@ export function AuthProvider({ children }) {
   const signOut = async () => {
     try {
       await firebaseSignOut(auth)
+      if (timeoutRef.current) { // Clear timeout on manual sign out
+        clearTimeout(timeoutRef.current)
+      }
       toast({
         title: "Signed out",
         description: "You've been successfully signed out",
@@ -229,4 +249,3 @@ export function AuthProvider({ children }) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
-

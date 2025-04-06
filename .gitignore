@@ -23,6 +23,19 @@ dist-ssr
 *.sln
 *.sw?
 
+# Environment variables
 .env
 .env.local
 .env.*.local
+
+# Firebase Emulator Data
+.firebase/
+
+# Test Coverage
+coverage/
+
+# Windows thumbnail cache
+Thumbs.db
+
+# Misc
+firebase-rules.js
